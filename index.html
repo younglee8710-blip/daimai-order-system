@@ -517,6 +517,9 @@
     <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="切换主题" style="margin-left:8px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg>
     </button>
+    <button class="header-btn" onclick="openAgentPanel()" title="🐻 订单熊Agent" style="margin-left:8px;background:linear-gradient(135deg,#FF6B00,#FF8C00);color:white;border:none">
+      🐻
+    </button>
   </div>
   <div class="stats">
     <div class="stat-box">
@@ -4537,6 +4540,154 @@ function resetBagItems() {
 
 // 页面加载时初始化袋子列表
 loadBagItems();
+
+// ── 🐻 订单熊Agent功能 ────────────────��─────────────────────────────────
+function openAgentPanel() {
+  const oldPanel = document.getElementById('agent-panel');
+  if (oldPanel) oldPanel.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'agent-panel';
+  panel.style.cssText = `
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:500px;max-width:90vw;background:var(--card);
+    border-radius:16px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.3);
+    z-index:99999;font-family:-apple-system,'PingFang SC',sans-serif;
+  `;
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <div style="font-size:20px;font-weight:700">🐻 订单熊Agent</div>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">智能订单助手</div>
+      </div>
+      <button onclick="document.getElementById('agent-panel').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-tertiary)">&times;</button>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:8px">输入订单信息（或粘贴图片）</label>
+      <textarea id="agentInput" rows="4" placeholder="例如：张三，催化剂样品×2，成本108元，卖120元&#10;或者直接粘贴淘宝订单截图..." style="width:100%;padding:12px;border:1.5px solid var(--separator);border-radius:10px;font-size:14px;resize:vertical;box-sizing:border-box;background:var(--bg);color:var(--text-primary)"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <button onclick="processAgentInput()" style="flex:1;padding:12px;background:linear-gradient(135deg,#FF6B00,#FF8C00);color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">
+        🐻 订单熊，帮我处理
+      </button>
+      <button onclick="document.getElementById('agentInput').value=''" style="padding:12px 20px;background:var(--bg);color:var(--text-secondary);border:1px solid var(--separator);border-radius:10px;font-size:14px;cursor:pointer">
+        清空
+      </button>
+    </div>
+
+    <div style="border-top:1px solid var(--separator);padding-top:12px;margin-top:12px">
+      <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">快捷命令：</div>
+      <div style="font-size:11px;color:var(--text-secondary);line-height:1.6">
+        • "添加订单：张三，商品XXX，成本108，卖120"<br>
+        • "搜索：张三的所有订单"<br>
+        • "统计：本月利润情况"<br>
+        • 粘贴淘宝订单截图，自动识别
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(panel);
+}
+
+function processAgentInput() {
+  const input = document.getElementById('agentInput').value.trim();
+  if (!input) {
+    showToast('请输入订单信息');
+    return;
+  }
+
+  // 简单的命令识别
+  if (input.includes('添加订单') || input.includes('新订单')) {
+    // 解析订单信息
+    const order = parseOrderInput(input);
+    if (order) {
+      addOrderFromAgent(order);
+    } else {
+      showToast('无法识别订单信息，请提供：客户、商品、金额');
+    }
+  } else if (input.includes('搜索') || input.includes('查询')) {
+    const keyword = input.replace(/搜索|查询|：/g, '').trim();
+    document.getElementById('searchInput').value = keyword;
+    handleSearch(keyword);
+    switchTab('list');
+    showToast('已切换到订单列表');
+  } else if (input.includes('统计') || input.includes('利润')) {
+    switchTab('summary');
+    showToast('已切换到金额汇总');
+  } else {
+    // 尝试直接解析为订单
+    const order = parseOrderInput(input);
+    if (order) {
+      addOrderFromAgent(order);
+    } else {
+      showToast('订单熊正在学习如何处理这个请求...');
+    }
+  }
+
+  document.getElementById('agent-panel').remove();
+}
+
+function parseOrderInput(input) {
+  // 简单的订单信息解析
+  let name = '', product = '', cost = '', charge = '';
+
+  // 提取客户姓名
+  const nameMatch = input.match(/([张李王刘陈杨赵黄周吴徐孙胡朱高林何郭马罗梁宋郑谢韩唐冯于董萧程曹袁邓许傅沈曾彭吕苏卢蔡蒋丁魏杜叶廖余潘田戴贾韦华夏丘钟汪方任白姜范秦熊谭邹廖金石廖姚谭陆金孔白崔康毛邱秦江史顾侯邵孟龙万段漕钱汤尹黎易常武乔贺赖龚文]/);
+  if (nameMatch) name = nameMatch[1];
+
+  // 提取商品
+  const productMatch = input.match(/([^，,]+?)[×x](\d+)|([^，,]+?)(?:成本|花费|淘宝|元)/);
+  if (productMatch) {
+    product = productMatch[1] || productMatch[3];
+    if (productMatch[2]) product += '×' + productMatch[2];
+  }
+
+  // 提取金额
+  const costMatch = input.match(/成本|花费|淘宝[：:]\s*(\d+(?:\.\d+)?)/);
+  const chargeMatch = input.match(/卖|实付|实收|收款[：:]\s*(\d+(?:\.\d+)?)/);
+
+  if (costMatch) cost = parseFloat(costMatch[1]);
+  if (chargeMatch) charge = parseFloat(chargeMatch[1]);
+
+  // 如果只有利润，反推成本
+  if (!cost && charge && input.includes('赚')) {
+    const profitMatch = input.match(/赚[：:]\s*(\d+(?:\.\d+)?)/);
+    if (profitMatch) {
+      const profit = parseFloat(profitMatch[1]);
+      cost = charge - profit;
+    }
+  }
+
+  if (!name || !product) return null;
+
+  return {
+    name: name || '未知客户',
+    phone: '',
+    address: '',
+    product: product,
+    cost: cost || 0,
+    charge: charge || 0,
+    status: '待处理',
+    tracking: '',
+    note: 'Agent添加',
+    date: new Date().toISOString().slice(0, 10)
+  };
+}
+
+function addOrderFromAgent(order) {
+  orders.push({
+    id: genId(),
+    ...order
+  });
+  save();
+  renderList();
+
+  const profit = (order.charge - order.cost).toFixed(2);
+  showToast(`✅ 订单熊已添加！\n客户：${order.name}\n商品：${order.product}\n利润：¥${profit}`);
+}
 
 // ── 在控制台输出快捷键提示 ───────────────────────────────────────────
 console.log('%c🎯 快捷键支持', 'font-size:16px;font-weight:bold;color:#007aff');
